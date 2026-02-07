@@ -23,6 +23,7 @@ typedef struct {
     const char *category;
     bench_fn    func;
     uint64_t    ops_per_iter;
+    int         oneshot;      /* 1 = run once (like OneshotGroup in original) */
 } benchmark_t;
 
 /* ------------------------------------------------------------------ */
@@ -31,7 +32,8 @@ typedef struct {
 
 uint64_t rdtsc_start(void);
 uint64_t rdtsc_end(void);
-double   run_benchmark(bench_fn func, uint64_t iterations, uint64_t ops_per_iter);
+double   run_benchmark(bench_fn func, uint64_t iterations, uint64_t ops_per_iter,
+                       int oneshot);
 
 /* ------------------------------------------------------------------ */
 /*  Compiler hints (architecture-independent)                         */

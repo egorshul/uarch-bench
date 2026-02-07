@@ -52,13 +52,21 @@ uint64_t rdtsc_end(void)
     return val;
 }
 
-double run_benchmark(bench_fn func, uint64_t iterations, uint64_t ops_per_iter)
+double run_benchmark(bench_fn func, uint64_t iterations, uint64_t ops_per_iter,
+                     int oneshot)
 {
     uint64_t start = rdtsc_start();
     func(iterations);
     uint64_t end = rdtsc_end();
 
     double total_cycles = (double)(end - start);
-    double total_ops    = (double)iterations * (double)ops_per_iter;
+    double total_ops;
+    if (oneshot) {
+        /* Oneshot benchmarks run once regardless of iterations;
+         * ops_per_iter is the total number of operations in that single call. */
+        total_ops = (double)ops_per_iter;
+    } else {
+        total_ops = (double)iterations * (double)ops_per_iter;
+    }
     return total_cycles / total_ops;
 }
