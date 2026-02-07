@@ -72,9 +72,10 @@ void bench_touch_lines_##kib(uint64_t iters)                                 \
     static void *region = NULL;                                              \
     size_t size = (size_t)(kib) * 1024;                                      \
     if (!region) region = aligned_alloc_helper(64, size);                     \
-    (void)iters; /* oneshot: runs once */                                    \
-    long r = touch_lines(region, size);                                      \
-    DO_NOT_OPTIMIZE(r);                                                      \
+    for (uint64_t i = 0; i < iters; i++) {                                   \
+        long r = touch_lines(region, size);                                  \
+        DO_NOT_OPTIMIZE(r);                                                  \
+    }                                                                        \
 }
 
 DEFINE_TOUCH_LINES(1)
