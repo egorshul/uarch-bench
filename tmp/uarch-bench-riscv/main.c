@@ -13,11 +13,12 @@
 /*  Benchmark table                                                   */
 /* ================================================================== */
 
-/* Helper macro for strided-store table entries */
+/* Helper macro for strided-store table entries.
+ * Function names: bench_strided_store_{w}_{s}_{k}  (no s/k suffixes to avoid ## issues) */
 #define STRIDED_ENTRY(w, s, k) \
     { "strided-store-" #w "-" #s "s-" #k "k", \
       #w "-byte stores, stride " #s ", size " #k " KiB", \
-      "memory/store", bench_strided_store_##w##_##s##s_##k##k, 1 },
+      "memory/store", bench_strided_store_##w##_##s##_##k, 1 },
 
 #define ALL_KIB_ENTRIES(w, s) \
     STRIDED_ENTRY(w,s,4)    STRIDED_ENTRY(w,s,8)    STRIDED_ENTRY(w,s,16)   \

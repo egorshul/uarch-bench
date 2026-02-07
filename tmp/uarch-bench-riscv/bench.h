@@ -40,17 +40,26 @@ double   run_benchmark(bench_fn func, uint64_t iterations, uint64_t ops_per_iter
 /* Prevent the compiler from optimising away a computed value. */
 #define DO_NOT_OPTIMIZE(val) __asm__ volatile("" :: "r"(val))
 
-/* Prevent the compiler from optimising away a computed double. */
-#define DO_NOT_OPTIMIZE_DOUBLE(val) __asm__ volatile("" :: "f"(val))
-
 /* Force the compiler to treat a variable as modified. */
 #define FORCE_MODIFY(val) __asm__ volatile("" : "+r"(val))
 
-/* Force the compiler to treat a double variable as modified. */
-#define FORCE_MODIFY_DOUBLE(val) __asm__ volatile("" : "+f"(val))
-
 /* Force materialisation of anything pointed to by ptr. */
 #define SINK_PTR(ptr) __asm__ volatile("" :: "r"(ptr) : "memory")
+
+/*
+ * For floating-point values the correct register constraint is
+ * architecture-dependent: "x" on x86 (XMM), "f" on RISC-V, "w" on ARM.
+ * We use a memory-based barrier that works on every target.
+ */
+#define DO_NOT_OPTIMIZE_DOUBLE(val) do {             \
+        volatile double _sink = (val);               \
+        (void)_sink;                                 \
+    } while (0)
+
+#define FORCE_MODIFY_DOUBLE(val) do {                \
+        volatile double *_p = &(val);                \
+        __asm__ volatile("" : : "r"(_p) : "memory"); \
+    } while (0)
 
 #define NEVER_INLINE  __attribute__((noinline))
 #define ALWAYS_INLINE __attribute__((always_inline)) inline
@@ -107,7 +116,7 @@ extern void bench_linkedlist_counter(uint64_t iterations);
 /* ------------------------------------------------------------------ */
 
 /*
- * Naming: bench_strided_store_{width}_{stride}s_{kib}k
+ * Naming: bench_strided_store_{width}_{stride}_{kib}
  *   width  = 1 | 4 | 8  (bytes)
  *   stride = 1,2,4,8,16,32,64,128
  *   kib    = 4,8,16,32,64,128,256,512,1024,2048
@@ -118,7 +127,7 @@ extern void bench_linkedlist_counter(uint64_t iterations);
  */
 
 #define DECLARE_STRIDED_STORE(width, stride, kib) \
-    extern void bench_strided_store_##width##_##stride##s_##kib##k(uint64_t iterations);
+    extern void bench_strided_store_##width##_##stride##_##kib(uint64_t iterations);
 
 #define DECLARE_STRIDED_SAMELOC(width) \
     extern void bench_strided_store_##width##_sameloc(uint64_t iterations);

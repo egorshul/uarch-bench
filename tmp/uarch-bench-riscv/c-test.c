@@ -5,6 +5,8 @@
  * Logic is preserved 1:1 from the original C++ code.
  */
 
+#define _GNU_SOURCE  /* for sched_getcpu() */
+
 #include "bench.h"
 
 #include <assert.h>
@@ -26,22 +28,6 @@ static void *aligned_alloc_helper(size_t alignment, size_t size)
     void *ptr = NULL;
     if (posix_memalign(&ptr, alignment, size) != 0)
         return NULL;
-    return ptr;
-}
-
-/*
- * The original uses a single static region reused across calls.
- * We replicate that behaviour.
- */
-static void *aligned_ptr(size_t alignment, size_t size)
-{
-    static void *ptr = NULL;
-    static size_t cur_size = 0;
-    if (!ptr || size > cur_size) {
-        free(ptr);
-        ptr = aligned_alloc_helper(alignment < sizeof(void *) ? sizeof(void *) : alignment, size);
-        cur_size = size;
-    }
     return ptr;
 }
 
@@ -249,6 +235,7 @@ static NEVER_INLINE uint32_t mul_by(const uint32_t *data, size_t len, uint32_t m
 
 static NEVER_INLINE uint32_t mul_chain_inner(const uint32_t *data, size_t len, uint32_t m)
 {
+    (void)m;
     uint32_t product = 1;
     for (size_t i = 0; i < len; i++) {
         product *= data[i];
@@ -259,6 +246,7 @@ static NEVER_INLINE uint32_t mul_chain_inner(const uint32_t *data, size_t len, u
 
 static NEVER_INLINE uint32_t mul_chain4_inner(const uint32_t *data, size_t len, uint32_t m)
 {
+    (void)m;
     uint32_t p1 = 1, p2 = 1, p3 = 1, p4 = 1;
     for (size_t i = 0; i < len; i += 4) {
         p1 *= data[i + 0];
@@ -502,7 +490,7 @@ DEFINE_STRIDED_SPLIT_IMPL(8)
 /* --- parametric strided stores --- */
 
 #define DEFINE_STRIDED_STORE_IMPL(width, stride_val, kib_val)                \
-void bench_strided_store_##width##_##stride_val##s_##kib_val##k(uint64_t iters) \
+void bench_strided_store_##width##_##stride_val##_##kib_val(uint64_t iters) \
 {                                                                            \
     static char *region = NULL;                                              \
     size_t region_bytes = (size_t)(kib_val) * 1024;                          \
@@ -728,9 +716,25 @@ DEFINE_ARB_OFFSET(bench_arb_u32_0_16_17_18, uint32_t, 0, 16, 17, 18)
 /*  Transcendental (math.h) benchmarks                                */
 /* ================================================================== */
 
-/* Throughput: independent calls, input not dependent on output */
+/*
+ * Throughput: independent calls, input not dependent on output.
+ * We need separate macros for 1-arg (log,exp) and 2-arg (pow) functions
+ * because C checks arity even in dead code paths.
+ */
 
-#define DEFINE_TRAN_TPUT(name, mathfn, use_y)                                \
+#define DEFINE_TRAN_TPUT_1(name, mathfn)                                     \
+void name(uint64_t iters)                                                    \
+{                                                                            \
+    double x0 = 0.123;                                                       \
+    while (iters--) {                                                        \
+        double x = x0;                                                       \
+        FORCE_MODIFY_DOUBLE(x);                                              \
+        double r = mathfn(x);                                                \
+        DO_NOT_OPTIMIZE_DOUBLE(r);                                           \
+    }                                                                        \
+}
+
+#define DEFINE_TRAN_TPUT_2(name, mathfn)                                     \
 void name(uint64_t iters)                                                    \
 {                                                                            \
     double x0 = 0.123;                                                       \
@@ -738,15 +742,27 @@ void name(uint64_t iters)                                                    \
     while (iters--) {                                                        \
         double x = x0, y = y0;                                              \
         FORCE_MODIFY_DOUBLE(x);                                              \
-        double r;                                                            \
-        if (use_y) r = mathfn(x, y); else r = mathfn(x);                    \
+        double r = mathfn(x, y);                                             \
         DO_NOT_OPTIMIZE_DOUBLE(r);                                           \
     }                                                                        \
 }
 
 /* Latency: output feeds back into input via x += t * z */
 
-#define DEFINE_TRAN_LAT(name, mathfn, use_y)                                 \
+#define DEFINE_TRAN_LAT_1(name, mathfn)                                      \
+void name(uint64_t iters)                                                    \
+{                                                                            \
+    double x = 0.123;                                                        \
+    double z = 0.0;                                                          \
+    FORCE_MODIFY_DOUBLE(z);                                                  \
+    while (iters--) {                                                        \
+        double t = mathfn(x);                                                \
+        x += t * z;                                                          \
+        DO_NOT_OPTIMIZE_DOUBLE(x);                                           \
+    }                                                                        \
+}
+
+#define DEFINE_TRAN_LAT_2(name, mathfn)                                      \
 void name(uint64_t iters)                                                    \
 {                                                                            \
     double x = 0.123;                                                        \
@@ -754,19 +770,18 @@ void name(uint64_t iters)                                                    \
     double z = 0.0;                                                          \
     FORCE_MODIFY_DOUBLE(z);                                                  \
     while (iters--) {                                                        \
-        double t;                                                            \
-        if (use_y) t = mathfn(x, y); else t = mathfn(x);                    \
+        double t = mathfn(x, y);                                             \
         x += t * z;                                                          \
         DO_NOT_OPTIMIZE_DOUBLE(x);                                           \
     }                                                                        \
 }
 
-DEFINE_TRAN_TPUT(bench_log_tput, log,  0)
-DEFINE_TRAN_TPUT(bench_exp_tput, exp,  0)
-DEFINE_TRAN_TPUT(bench_pow_tput, pow,  1)
-DEFINE_TRAN_LAT (bench_log_lat,  log,  0)
-DEFINE_TRAN_LAT (bench_exp_lat,  exp,  0)
-DEFINE_TRAN_LAT (bench_pow_lat,  pow,  1)
+DEFINE_TRAN_TPUT_1(bench_log_tput, log)
+DEFINE_TRAN_TPUT_1(bench_exp_tput, exp)
+DEFINE_TRAN_TPUT_2(bench_pow_tput, pow)
+DEFINE_TRAN_LAT_1 (bench_log_lat,  log)
+DEFINE_TRAN_LAT_1 (bench_exp_lat,  exp)
+DEFINE_TRAN_LAT_2 (bench_pow_lat,  pow)
 
 /* ================================================================== */
 /*  Syscall benchmarks                                                */
