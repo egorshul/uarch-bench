@@ -58,6 +58,52 @@ static int always_zero(void)
 }
 
 /* ================================================================== */
+/*  Cache-line touch benchmarks                                       */
+/* ================================================================== */
+
+/*
+ * Ported from mem-benches-oneshot.cpp: touch_bench + touch_lines (util.cpp).
+ * touch_lines reads one volatile byte per cache line across the region.
+ */
+
+#define UB_CACHE_LINE_SIZE 64
+
+static long touch_lines(void *region, size_t size)
+{
+    if (size == 0) return 0;
+    char sum = 0;
+    volatile char *cregion = (volatile char *)region;
+    for (volatile char *r = cregion; r < cregion + size; r += UB_CACHE_LINE_SIZE) {
+        sum += *r;
+    }
+    sum += cregion[size - 1];
+    return sum;
+}
+
+#define DEFINE_TOUCH_LINES(kib)                                              \
+void bench_touch_lines_##kib(uint64_t iters)                                 \
+{                                                                            \
+    static void *region = NULL;                                              \
+    size_t size = (size_t)(kib) * 1024;                                      \
+    if (!region) region = aligned_alloc_helper(64, size);                     \
+    (void)iters; /* oneshot: runs once */                                    \
+    long r = touch_lines(region, size);                                      \
+    DO_NOT_OPTIMIZE(r);                                                      \
+}
+
+DEFINE_TOUCH_LINES(1)
+DEFINE_TOUCH_LINES(2)
+DEFINE_TOUCH_LINES(4)
+DEFINE_TOUCH_LINES(8)
+DEFINE_TOUCH_LINES(16)
+DEFINE_TOUCH_LINES(32)
+DEFINE_TOUCH_LINES(64)
+DEFINE_TOUCH_LINES(128)
+DEFINE_TOUCH_LINES(256)
+DEFINE_TOUCH_LINES(512)
+DEFINE_TOUCH_LINES(1024)
+
+/* ================================================================== */
 /*  Division benchmarks                                               */
 /* ================================================================== */
 

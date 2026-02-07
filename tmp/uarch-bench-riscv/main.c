@@ -42,6 +42,21 @@
 benchmark_t all_benchmarks[] = {
 
     /* ---------------------------------------------------------- */
+    /* Cache-line touch benchmarks                                */
+    /* ---------------------------------------------------------- */
+    { "touch-lines-1",    "touch one cache line 1 KiB",    "memory/touch-lines", bench_touch_lines_1,    1024/64 },
+    { "touch-lines-2",    "touch one cache line 2 KiB",    "memory/touch-lines", bench_touch_lines_2,    2048/64 },
+    { "touch-lines-4",    "touch one cache line 4 KiB",    "memory/touch-lines", bench_touch_lines_4,    4096/64 },
+    { "touch-lines-8",    "touch one cache line 8 KiB",    "memory/touch-lines", bench_touch_lines_8,    8192/64 },
+    { "touch-lines-16",   "touch one cache line 16 KiB",   "memory/touch-lines", bench_touch_lines_16,   16384/64 },
+    { "touch-lines-32",   "touch one cache line 32 KiB",   "memory/touch-lines", bench_touch_lines_32,   32768/64 },
+    { "touch-lines-64",   "touch one cache line 64 KiB",   "memory/touch-lines", bench_touch_lines_64,   65536/64 },
+    { "touch-lines-128",  "touch one cache line 128 KiB",  "memory/touch-lines", bench_touch_lines_128,  131072/64 },
+    { "touch-lines-256",  "touch one cache line 256 KiB",  "memory/touch-lines", bench_touch_lines_256,  262144/64 },
+    { "touch-lines-512",  "touch one cache line 512 KiB",  "memory/touch-lines", bench_touch_lines_512,  524288/64 },
+    { "touch-lines-1024", "touch one cache line 1024 KiB", "memory/touch-lines", bench_touch_lines_1024, 1048576/64 },
+
+    /* ---------------------------------------------------------- */
     /* Division benchmarks                                        */
     /* ---------------------------------------------------------- */
     { "div32_64-lat",  "Dependent 32b / 64b inline divisions",   "cpp/division", bench_div_lat_32_64,  1 },

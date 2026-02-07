@@ -56,6 +56,22 @@ double   run_benchmark(bench_fn func, uint64_t iterations, uint64_t ops_per_iter
 #define ALWAYS_INLINE __attribute__((always_inline)) inline
 
 /* ------------------------------------------------------------------ */
+/*  Cache-line touch benchmarks (memory/touch-lines)                  */
+/* ------------------------------------------------------------------ */
+
+extern void bench_touch_lines_1(uint64_t iterations);
+extern void bench_touch_lines_2(uint64_t iterations);
+extern void bench_touch_lines_4(uint64_t iterations);
+extern void bench_touch_lines_8(uint64_t iterations);
+extern void bench_touch_lines_16(uint64_t iterations);
+extern void bench_touch_lines_32(uint64_t iterations);
+extern void bench_touch_lines_64(uint64_t iterations);
+extern void bench_touch_lines_128(uint64_t iterations);
+extern void bench_touch_lines_256(uint64_t iterations);
+extern void bench_touch_lines_512(uint64_t iterations);
+extern void bench_touch_lines_1024(uint64_t iterations);
+
+/* ------------------------------------------------------------------ */
 /*  Division benchmarks                                               */
 /* ------------------------------------------------------------------ */
 
